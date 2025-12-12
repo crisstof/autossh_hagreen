@@ -1,0 +1,26 @@
+name: "Custom AutoSSH Tunnel"
+version: "0.1.0"
+slug: "custom_autossh_tunnel"
+description: "Simple reverse SSH tunnel for Home Assistant Green vers un VPS"
+url: "https://github.com/crisstof/autossh_hagreen.git"
+arch:
+  - aarch64
+  - amd64
+startup: services
+boot: auto
+init: false
+options:
+  hostname: "www.hagreen.tairopgc.com"
+  ssh_port: 2222
+  username: "haos"
+  remote_forwarding: "127.0.0.1:8081:192.168.1.40:8123"
+  server_alive_interval: 30
+  server_alive_count_max: 3
+schema:
+  hostname: str
+  ssh_port: int
+  username: str
+  remote_forwarding: str
+  server_alive_interval: int
+  server_alive_count_max: int
+image: "ghcr.io/TONCOMPTE/custom-autossh-addon-{arch}"
