@@ -1,0 +1,129 @@
+construction d'un autossh car celui de https://github.com/racksync/hass-addons-autossh-tunnel.git
+ne fonctionne plus
+
+ce sera une authentification par clé ssh / utilisateur mais sans mot de passe c'est pour un reverse proxy.
+home assistant doit se connecter  à mon vps (heberge le serveur ssh) pour avoir acces à distance avec le client home assistant de mon portable.
+
+pour le moment je suis ici
+
+AUTOSSH_HAGREEN
+repositosy.json
+{
+  "name": "Autossh HaGreen Addons",
+  "url": "https://github.com/crisstof/autossh_hagreen",
+  "maintainer": "crisstof"
+}
+
+repository.yaml  (car pas de module complementaire afficher dans le module complementaire mais ne fonctionne pas toujours rien)
+name: Autossh HaGreen Addons
+url: https://github.com/crisstof/autossh_hagreen
+maintainer: crisstof
+version: "0.1.0"
+addons:
+  - custom_autossh_tunnel
+
+
+
+puis dans un répertoire autossh on a 
+config.yaml
+name: "Custom AutoSSH Tunnel"
+version: "0.1.0"
+slug: "custom_autossh_tunnel"
+description: "Simple reverse SSH tunnel for Home Assistant Green vers un VPS"
+url: "https://github.com/crisstof/autossh_hagreen.git"
+arch:
+  - aarch64
+  - amd64
+startup: services
+boot: auto
+init: false
+options:
+  hostname: "www.hagreen.tairopgc.com"
+  ssh_port: 2222
+  username: "haos"
+  remote_forwarding: "127.0.0.1:8081:192.168.1.40:8123"
+  server_alive_interval: 30
+  server_alive_count_max: 3
+schema:
+  hostname: str
+  ssh_port: int
+  username: str
+  remote_forwarding: str
+  server_alive_interval: int
+  server_alive_count_max: int
+image: "ghcr.io/TONCOMPTE/custom-autossh-addon-{arch}"
+
+
+DOckerfile
+ARG BUILD_FROM
+FROM $BUILD_FROM
+
+# Install autossh + client SSH
+RUN apk add --no-cache autossh openssh-client
+
+# Copy run script
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+
+CMD [ "/run.sh" ]
+
+run.sh
+#!/usr/bin/with-contenv bashio
+
+HOSTNAME=$(bashio::config 'hostname')
+SSH_PORT=$(bashio::config 'ssh_port')
+USERNAME=$(bashio::config 'username')
+REMOTE=$(bashio::config 'remote_forwarding')
+INTERVAL=$(bashio::config 'server_alive_interval')
+COUNT_MAX=$(bashio::config 'server_alive_count_max')
+
+bashio::log.info "Configuration:"
+bashio::log.info "  Hostname: ${HOSTNAME}"
+bashio::log.info "  Port SSH: ${SSH_PORT}"
+bashio::log.info "  User: ${USERNAME}"
+bashio::log.info "  Remote forwarding: ${REMOTE}"
+
+# Dossier pour les clés
+mkdir -p /data/.ssh
+chmod 700 /data/.ssh
+
+# Générer une clé si absente
+if ! bashio::fs.file_exists "/data/.ssh/id_ed25519"; then
+  bashio::log.info "Aucune clé trouvée, génération d'une clé ED25519..."
+  ssh-keygen -t ed25519 -f /data/.ssh/id_ed25519 -N "" -C "ha-custom-autossh@$(date +%F)"
+  bashio::log.warning "Ajoute cette clé publique dans ~/.ssh/authorized_keys sur ton VPS :"
+  bashio::log.warning "$(cat /data/.ssh/id_ed25519.pub)"
+fi
+
+chmod 600 /data/.ssh/id_ed25519
+
+bashio::log.info "Démarrage du tunnel AutoSSH..."
+
+exec autossh -M 0 -N \
+  -o "ServerAliveInterval=${INTERVAL}" \
+  -o "ServerAliveCountMax=${COUNT_MAX}" \
+  -o "ExitOnForwardFailure=yes" \
+  -o "StrictHostKeyChecking=accept-new" \
+  -R "${REMOTE}" \
+  -i /data/.ssh/id_ed25519 \
+  -p "${SSH_PORT}" \
+  "${USERNAME}@${HOSTNAME}"
+
+
+
+=============pour le moment je peut ajouter le depot mais pas dans le module complementaire.
+
+
+Correction
+autossh_hagreen/
+├── repository.json          # ✅ GARDER
+├── README.md               # ✅ AJOUTER (optionnel)
+└── custom_autossh_tunnel/  # ⚠️  IMPORTANT: nom = slug dans config.yaml
+    ├── config.yaml
+    ├── Dockerfile
+    ├── run.sh
+    ├── build.json          # ✅ AJOUTER (obligatoire)
+    ├── DOCS.md            # ✅ AJOUTER (optionnel)
+    └── icon.png           # ✅ AJOUTER (optionnel)
+
+    

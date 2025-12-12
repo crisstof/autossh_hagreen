@@ -1,11 +1,14 @@
 name: "Custom AutoSSH Tunnel"
-version: "0.1.0"
+version: "1.0.0"
 slug: "custom_autossh_tunnel"
-description: "Simple reverse SSH tunnel for Home Assistant Green vers un VPS"
-url: "https://github.com/crisstof/autossh_hagreen.git"
+description: "Reverse SSH tunnel pour Home Assistant vers VPS"
+url: "https://github.com/crisstof/autossh_hagreen"
 arch:
   - aarch64
   - amd64
+  - armhf
+  - armv7
+  - i386
 startup: services
 boot: auto
 init: false
@@ -18,9 +21,10 @@ options:
   server_alive_count_max: 3
 schema:
   hostname: str
-  ssh_port: int
+  ssh_port: port
   username: str
   remote_forwarding: str
-  server_alive_interval: int
-  server_alive_count_max: int
-image: "ghcr.io/TONCOMPTE/custom-autossh-addon-{arch}"
+  server_alive_interval: int(1,300)
+  server_alive_count_max: int(1,10)
+map:
+  - share:rw
